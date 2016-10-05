@@ -1,0 +1,11 @@
+---
+- name: "Install webserver packages"
+  action: apt pkg={{ item }} state=installed update_cache=yes
+  with_items:
+     - nginx
+
+#- name: "Install webserver packages"
+#  action: apt pkg={{ item }} state=removed update_cache=yes
+#  with_items:
+#     - apache2
+

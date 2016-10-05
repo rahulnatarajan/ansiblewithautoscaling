@@ -1,0 +1,7 @@
+- hosts: appservers
+  remote_user: ubuntu
+  gather_facts: True
+  sudo: True
+  roles:
+    - role: appservers
+

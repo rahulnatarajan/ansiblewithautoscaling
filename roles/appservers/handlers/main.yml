@@ -1,0 +1,8 @@
+# this file defines event handlers which are triggered when certain
+# resources change, as referenced in the 'tasks' sections of various
+# playbook plays
+
+- name: reload nginx
+  action: service name=nginx state=restarted
+
+

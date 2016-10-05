@@ -1,0 +1,51 @@
+---
+# Note: you need first to add your vars and names
+#
+## AWS EC2 AMI, KEY ##
+aws_image: ami-xxxxxxx
+aws_keypair: <keypair_name>
+
+## Management instance IP ##
+drman_ip: <ip_address>
+
+## EC2_instances zone ids ##
+id_az_app1: 1
+
+## APP instances ##
+aws_instanceType_app: t2.medium
+count_app: 1
+device_type_app: gp2
+volume_size_app: 8
+
+
+## VPC INFO ##
+aws_region: eu-west-1
+aws_zone1: eu-west-1a
+aws_zone2: eu-west-1b
+aws_zone3: eu-west-1c
+
+## Security groups ##
+security_group: sec_group_app
+security_group_app: sec_group_app
+
+## ELBs names ##
+elb_name: <elb_name>
+elb_name1: <elb_name1>
+elb_name2: <elb_name2>
+vpc_name: <vpc_name>
+
+ssl_certificate_id: arn:aws:iam::<aws_account_id>:server-certificate/<crt_name>
+
+
+## VPC ipdr block, subnets ##
+cidr_block: 10.0.0.0/16
+cidr_zone1: 10.0.1.0/24
+cidr_zone2: 10.0.2.0/24
+cidr_zone3: 10.0.3.0/24
+
+
+# AUTOSCALING
+lc_name: lc1
+asg_name: asg1
+asg_instance_type: t2.medium
+sp_name: sp1

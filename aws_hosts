@@ -1,0 +1,15 @@
+[local]
+localhost
+
+[appservers] #app
+
+[dbservers] #db
+
+[cacheservers] #cache
+
+[nfsservers] #nfs
+
+
+
+
+

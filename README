@@ -1,0 +1,77 @@
+CWOAUTOSCALE Ansible playbook:
+
+NOTE: this playbook has been created for testing purpose and for later reuse in production environments as a part of work on DR solution
+      testing has been successfully completed on Disaster Recovery Management instance (drman):  
+      high CPU usage for scale-up/scale-down testing has been generated with "stress" package ($sudo apt-get install stress)
+
+
+
+CWOAUTOSCALE Ansible playbook consists of 3 parts:
+
+1. deploy-test_autoscaling_env.yml
+      -create 1 x VPC with 1 x VPC subnets in 1 x AZ in one AWS region (we are using for testing eu-west1 on separate AWS TEST account),
+      -create 1 x security group,
+      -provision 1x EC2_APP instances in 1x AZ # GOLD instance (Required later to create GOLD AMI,Launch Configuration and Autoscaling group),
+      -launch and configure elb1 public facing VPC ELB (cross_az_load_balancing) and attach VPC subnets,
+      -install appservers.yml role on EC2_APP instances (this role install nginx and is it required to allow instances registration to ELB,
+      -deregister and register EC2_APP instances on ELB.
+
+   
+    All static variables are defined in main.yml and dynamic variables are registered, during playbook execution, in vpc_info.yml file (aws_vars/prod folder)
+    variables:  regions, az, vpc, subnets, elb dns name info, keypair, GOLD instance ID, instance types, AMI ID etc.
+  
+   Playbook execution: $ansible-playbook -i aws_hosts deploy-test_autoscaling_env.yml
+
+
+2. ec2_ami.yml
+       - create GOLD AMI from GOLD instance (Required to complete deploys and rollbacks)
+ 
+    Playbook execution: $ansible-playbook -i aws_hosts ec2_ami.yml
+
+3. autoscaling.yml
+       - create Launch config (from GOLD AMI)
+       - create ASG (autoscaling group)
+       - configure Scaling Policies
+       - determine Metric Alarm configuration
+       - configure Metric Alarms and link to Scaling Policies
+
+   Playbook execution: $ansible-playbook -i autoscaling.yml
+
+
+Initial ASG creation, Deploys, Rollbacks
+     First autoscaling.yml playbook run will create and configure initial LC, ASG, and SP 
+     each other autoscaling.yml playbook run with changed LC will start NEW instances and replace all OLD instances in ASG group
+     each other autoscaling.yml playbook run with changed  Scaling Policies, Metric Alarm configuration will update the ASG configuration
+
+Notification (alerts) about all activity in ASG: scaling up/ scaling down and instance creation/termination  need to be configured on the AWS web console 
+    
+
+
+
+
+
+ANSIBLE INSTALLATION 
+1. Ansible and Boto installation Ubuntu 14.04 LTS
+  $ sudo apt-get install software-properties-common
+  $ sudo apt-add-repository ppa:ansible/ansible
+  $ sudo apt-get update
+  $ sudo apt-get install ansible
+  $ apt-get install python-pip
+  $ pip install boto
+
+
+2. Download to folder /etc/ansible/
+  $ wget https://raw.github.com/ansible/ansible/devel/plugins/inventory/ec2.py
+  $ wget https://raw.githubusercontent.com/ansible/ansible/devel/plugins/inventory/ec2.ini
+  $ chmod +x /etc/ansible/ec2.py
+
+3. In aws console create IAM user with PowerUser privileges Add in file /home/ubuntu/.boto
+  [Credentials]
+  aws_access_key_id = XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+  aws_secret_access_key = XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+4. Add in clean file /home/ubuntu/.ansible.cfg
+  [defaults]
+  host_key_checking = False
+  private_key_file=/home/ubuntu/.ssh/<keypair_name>.pem
+

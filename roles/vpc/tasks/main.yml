@@ -1,0 +1,60 @@
+---
+- name: "Provision VPC in 1 aws zones"
+  local_action:
+        module: ec2_vpc
+        state: present
+        cidr_block: "{{ cidr_block }}"
+        resource_tags: '{"Name":"{{ vpc_name }}"}'
+        subnets:
+                - cidr: "{{ cidr_zone1 }}"
+                  az: "{{ aws_zone1 }}"
+                  resource_tags: '{"Name":"{{ env }}_subnet_az1"}'
+
+        internet_gateway: True
+        route_tables:
+                - subnets:
+                        - "{{ cidr_zone1 }}"
+                  routes:
+                        - dest: 0.0.0.0/0
+                          gw: igw
+        region: "{{ aws_region }}"
+        wait: yes
+  register: vpc
+
+- name: write vpc id to vpc_info.yml file
+  local_action: shell echo  vpc":" "{{ vpc.vpc_id }}"
+                      > aws_vars/"{{ env }}"/vpc_info.yml
+- name: write subnets id to vpc_info file
+  local_action: shell echo "{{ item.resource_tags.Name }}"":" "{{ item.id }}"
+                      >> aws_vars/"{{ env }}"/vpc_info.yml
+  with_items: vpc.subnets
+
+
+
+- name: Provision EC2 security group
+  local_action:
+        module: ec2_group
+        state: present
+        name: "{{ security_group }}"
+        description: "{{ security_group }}"
+        vpc_id: "{{ vpc.vpc_id }}"
+        region: "{{ aws_region }}"
+        rules:
+          - proto: all
+            cidr_ip: "{{ drman_ip }}"
+          - proto: tcp
+            from_port: 80
+            to_port: 80
+            cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            from_port: 443
+            to_port: 443
+            cidr_ip: 0.0.0.0/0
+  register: aws_sg
+
+
+- name: write ec2_group id to vpc_info.yml file
+  local_action: shell echo security_group_id1":" "{{ aws_sg.group_id }}"
+                      >> aws_vars/"{{ env }}"/vpc_info.yml
+
+

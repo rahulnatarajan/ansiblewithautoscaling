@@ -1,0 +1,16 @@
+---
+- name: Create GOLD ami  - zone 1
+  local_action:
+        module: ec2_ami
+        region: "{{ aws_region }}"
+        instance_id: "{{ instance_id }}"
+        no_reboot: yes
+        wait: no
+        name: ASami-{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}
+  register: ec2_ami
+
+- name: write ami id to vpc_info file
+  local_action: shell echo ami_id":" "{{ ec2_ami.image_id }}"
+                      >> aws_vars/"{{ env }}"/vpc_info.yml
+  with_items: ec2_ami.instances
+

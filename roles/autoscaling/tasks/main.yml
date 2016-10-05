@@ -1,0 +1,90 @@
+---
+- name: Create Launch config
+  local_action:
+        module: ec2_lc
+        name: "{{ lc_name }}"
+        image_id: "ami-a9dca2de"
+        key_name: "{{ aws_keypair }}"
+        security_groups: "{{ security_group_id1 }}"
+        instance_type: "{{ asg_instance_type }}"
+        region: "{{ aws_region }}"
+        instance_monitoring: yes
+  register: ec2_lc
+
+- name: Create ASG
+  local_action:
+        module: ec2_asg
+        name: "{{ asg_name }}"
+        launch_config_name: "{{ lc_name }}"
+        health_check_period: 300
+        health_check_type: ELB
+        min_size: 1
+        max_size: 3
+        desired_capacity: 1
+        region: "{{ aws_region }}"  
+        availability_zones: "{{ aws_zone1 }}"
+        load_balancers:  
+          - "{{ elb_name1 }}"
+          - "{{ elb_name2 }}"  
+        replace_all_instances: yes
+        vpc_zone_identifier: "{{ prod_subnet_az1 }}"
+  register:  asg_result
+  tags: "{{ asg_name }}"
+
+- name: Configure Scaling Policies
+  ec2_scaling_policy:
+    region: "{{ aws_region }}"
+    name: "{{ item.name }}"
+    asg_name: "{{ asg_name }}"
+    state: present
+    adjustment_type: "{{ item.adjustment_type }}"
+    min_adjustment_step: "{{ item.min_adjustment_step }}"
+    scaling_adjustment: "{{ item.scaling_adjustment }}"
+    cooldown: "{{ item.cooldown }}"
+  with_items:
+    - name: "Increase Group Size"
+      adjustment_type: "ChangeInCapacity"
+      scaling_adjustment: +1
+      min_adjustment_step: 1
+      cooldown: 180
+    - name: "Decrease Group Size"
+      adjustment_type: "ChangeInCapacity"
+      scaling_adjustment: -1
+      min_adjustment_step: 1
+      cooldown: 300
+  register: sp_result
+
+
+
+- name: Determine Metric Alarm configuration
+  set_fact:
+    metric_alarms:
+      - name: "{{ asg_name }}-ScaleUp"
+        comparison: ">="
+        threshold: 50.0
+        alarm_actions:
+          - "{{ sp_result.results[0].arn }}"
+      - name: "{{ asg_name }}-ScaleDown"
+        comparison: "<="
+        threshold: 20.0
+        alarm_actions:
+          - "{{ sp_result.results[1].arn }}"
+
+- name: Configure Metric Alarms and link to Scaling Policies
+  ec2_metric_alarm:
+    region: "{{ aws_region }}"
+    name: "{{ item.name }}"
+    state: present
+    metric: "CPUUtilization"
+    namespace: "AWS/EC2"
+    statistic: "Average"
+    comparison: "{{ item.comparison }}"
+    threshold: "{{ item.threshold }}"
+    period: 60
+    evaluation_periods: 3
+    unit: "Percent"
+    dimensions:
+      AutoScalingGroupName: "{{ asg_name }}"
+    alarm_actions: "{{ item.alarm_actions }}"
+  with_items: metric_alarms
+  register: ma_result

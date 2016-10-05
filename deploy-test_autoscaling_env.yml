@@ -1,0 +1,6 @@
+---
+- include: vpc.yml
+- include: ec2_app.yml
+- include: appservers.yml
+- include: elb.yml
+- include: ec2_ami.yml
